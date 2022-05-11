@@ -1,8 +1,8 @@
 deploy:
 	git pull --ff-only
-	cp conf/mariadb.conf.d/* /etc/mysql/mariadb.conf.d/
-	cp conf/nginx/nginx.conf /etc/nginx/nginx.conf
-	cp conf/nginx/sites-enabled/* /etc/nginx/sites-enabled
+	sudo cp conf/mariadb.conf.d/* /etc/mysql/mariadb.conf.d/
+	sudo cp conf/nginx/nginx.conf /etc/nginx/nginx.conf
+	sudo cp conf/nginx/sites-enabled/* /etc/nginx/sites-enabled
 	$(MAKE) build restart-app
 
 build:
