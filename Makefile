@@ -3,7 +3,7 @@ deploy:
 	cp conf/mariadb.conf.d/* /etc/mysql/mariadb.conf.d/
 	cp conf/nginx/nginx.conf /etc/nginx/nginx.conf
 	cp conf/nginx/sites-enabled/* /etc/nginx/sites-enabled
-	$(MAKE) build
+	$(MAKE) build restart-app
 
 build:
 	(cd go; go build -o isucondition main.go)
