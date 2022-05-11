@@ -18,3 +18,10 @@ restart-db:
 
 restart-nginx:
 	sudo systemctl restart nginx
+
+install-alp:
+	cd /tmp
+	wget https://github.com/tkuchiki/alp/releases/download/v1.0.8/alp_linux_amd64.zip
+	unzip alp_linux_amd64.zip
+	sudo mv ./alp /usr/local/bin
+	rm alp_linux_amd64.zip
