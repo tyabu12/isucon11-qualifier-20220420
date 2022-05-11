@@ -10,7 +10,7 @@ build:
 
 restart: restart-db restart-nginx
 
-restat-app:
+restart-app:
 	sudo systemctl restart isucondition.go
 
 restart-db:
