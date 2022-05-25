@@ -1,5 +1,6 @@
 deploy:
 	git pull --ff-only
+	cp conf/.gitconfig ~
 	sudo cp conf/mariadb.conf.d/* /etc/mysql/mariadb.conf.d/
 	sudo cp conf/nginx/nginx.conf /etc/nginx/nginx.conf
 	sudo cp conf/nginx/sites-enabled/* /etc/nginx/sites-enabled
