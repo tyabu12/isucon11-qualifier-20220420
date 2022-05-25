@@ -1,3 +1,10 @@
+all:
+	git fetch
+	git reset --hard origin/master
+	$(MAKE) deploy
+	$(MAKE) restart
+	$(MAKE) clean-log
+
 deploy:
 	git pull --ff-only
 	cp conf/.gitconfig ~
@@ -30,3 +37,5 @@ install-alp:
 	sudo mv ./alp /usr/local/bin
 	rm alp_linux_amd64.zip
 
+alp-log:
+	sudo cat /var/log/nginx/access.log | alp ltsv -m '/api/condition/[0-9a-z\-]+,/isu/[0-9a-z\-]+/icon,/isu/[0-9a-z\-]+/graph,/isu/[0-9a-z\-]+/condition,/api/isu/[0-9a-z\-]+,/isu/[0-9a-z\-]+' -r
