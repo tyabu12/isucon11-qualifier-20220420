@@ -1,19 +1,32 @@
-all:
-	git fetch
-	git reset --hard origin/master
-	$(MAKE) deploy
-	$(MAKE) restart
-	$(MAKE) clean-log
-
-deploy:
+fetch:
 	git fetch -p
 	git reset --hard origin/master
 	git clean -df
 	cp conf/.gitconfig ~
+
+deploy-app1:
 	sudo cp conf/mariadb.conf.d/* /etc/mysql/mariadb.conf.d/
 	sudo cp conf/nginx/nginx.conf /etc/nginx/nginx.conf
-	sudo cp conf/nginx/sites-enabled/* /etc/nginx/sites-enabled
-	$(MAKE) build restart-app
+	sudo cp conf/nginx/app1/isucondition.conf /etc/nginx/sites-enabled
+	$(MAKE) build
+	$(MAKE) restart-nginx restart-app restart-db
+	$(MAKE) clean-log
+
+deploy-app2:
+	sudo systemctl stop mariadb
+	sudo cp conf/nginx/nginx.conf /etc/nginx/nginx.conf
+	sudo cp conf/nginx/app2/isucondition.conf /etc/nginx/sites-enabled
+	$(MAKE) build
+	$(MAKE) restart-nginx restart-app
+	$(MAKE) clean-log
+
+deploy-app3:
+	sudo systemctl stop mariadb
+	sudo cp conf/nginx/nginx.conf /etc/nginx/nginx.conf
+	sudo cp conf/nginx/app3/isucondition.conf /etc/nginx/sites-enabled
+	$(MAKE) build
+	$(MAKE) restart-nginx restart-app
+	$(MAKE) clean-log
 
 build:
 	(cd go; go build -o isucondition main.go)
