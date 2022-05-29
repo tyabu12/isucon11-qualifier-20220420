@@ -6,7 +6,9 @@ all:
 	$(MAKE) clean-log
 
 deploy:
-	git pull --ff-only
+	git fetch -p
+	git reset --hard origin/master
+	git clean -df
 	cp conf/.gitconfig ~
 	sudo cp conf/mariadb.conf.d/* /etc/mysql/mariadb.conf.d/
 	sudo cp conf/nginx/nginx.conf /etc/nginx/nginx.conf
@@ -28,7 +30,7 @@ restart-nginx:
 	sudo systemctl restart nginx
 
 clean-log:
-	sudo truncate -s 0 /var/log/nginx/access.log /var/log/mysql/mysql.log /var/log/mysql/mariadb-slow.log
+	sudo truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log /var/log/mysql/mysql.log /var/log/mysql/mariadb-slow.log
 
 install-alp:
 	cd /tmp
