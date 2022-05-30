@@ -1037,11 +1037,10 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 				Message:        c.Message,
 			}
 			conditionsResponse = append(conditionsResponse, &data)
+			if len(conditionsResponse) >= limit {
+				break
+			}
 		}
-	}
-
-	if len(conditionsResponse) > limit {
-		conditionsResponse = conditionsResponse[:limit]
 	}
 
 	return conditionsResponse, nil
