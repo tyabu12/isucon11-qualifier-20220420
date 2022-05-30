@@ -57,14 +57,15 @@ type Config struct {
 }
 
 type Isu struct {
-	ID         int       `db:"id" json:"id"`
-	JIAIsuUUID string    `db:"jia_isu_uuid" json:"jia_isu_uuid"`
-	Name       string    `db:"name" json:"name"`
-	Image      []byte    `db:"image" json:"-"`
-	Character  string    `db:"character" json:"character"`
-	JIAUserID  string    `db:"jia_user_id" json:"-"`
-	CreatedAt  time.Time `db:"created_at" json:"-"`
-	UpdatedAt  time.Time `db:"updated_at" json:"-"`
+	ID              int              `db:"id" json:"id"`
+	JIAIsuUUID      string           `db:"jia_isu_uuid" json:"jia_isu_uuid"`
+	Name            string           `db:"name" json:"name"`
+	Image           []byte           `db:"image" json:"-"`
+	Character       string           `db:"character" json:"character"`
+	JIAUserID       string           `db:"jia_user_id" json:"-"`
+	CreatedAt       time.Time        `db:"created_at" json:"-"`
+	UpdatedAt       time.Time        `db:"updated_at" json:"-"`
+	LatestCondition NullIsuCondition `db:"latest_condition" json:"-"`
 }
 
 type IsuFromJIA struct {
@@ -77,6 +78,16 @@ type GetIsuListResponse struct {
 	Name               string                   `json:"name"`
 	Character          string                   `json:"character"`
 	LatestIsuCondition *GetIsuConditionResponse `json:"latest_isu_condition"`
+}
+
+type NullIsuCondition struct {
+	ID         sql.NullInt64  `db:"id"`
+	JIAIsuUUID sql.NullString `db:"jia_isu_uuid"`
+	Timestamp  sql.NullTime   `db:"timestamp"`
+	IsSitting  sql.NullBool   `db:"is_sitting"`
+	Condition  sql.NullString `db:"condition"`
+	Message    sql.NullString `db:"message"`
+	CreatedAt  sql.NullTime   `db:"created_at"`
 }
 
 type IsuCondition struct {
@@ -461,7 +472,20 @@ func getIsuList(c echo.Context) error {
 	isuList := []Isu{}
 	err = tx.Select(
 		&isuList,
-		"SELECT * FROM `isu` WHERE `jia_user_id` = ? ORDER BY `id` DESC",
+		"SELECT `isu`.*"+
+			" ,`latest_condition`.`id` \"latest_condition.id\""+
+			" ,`latest_condition`.`jia_isu_uuid` \"latest_condition.jia_isu_uuid\""+
+			" ,`latest_condition`.`timestamp` \"latest_condition.timestamp\""+
+			" ,`latest_condition`.`is_sitting` \"latest_condition.is_sitting\""+
+			" ,`latest_condition`.`condition` \"latest_condition.condition\""+
+			" ,`latest_condition`.`message` \"latest_condition.message\""+
+			" ,`latest_condition`.`created_at` \"latest_condition.created_at\""+
+			" FROM `isu`"+
+			" LEFT JOIN `isu_condition` AS `latest_condition`"+
+			" ON `latest_condition`.`jia_isu_uuid` = `isu`.`jia_isu_uuid`"+
+			" AND `latest_condition`.`timestamp` = (SELECT MAX(`timestamp`) FROM `isu_condition` WHERE `jia_isu_uuid` = `isu`.`jia_isu_uuid`)"+
+			" WHERE `isu`.`jia_user_id` = ?"+
+			" ORDER BY `isu`.`id` DESC",
 		jiaUserID)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
@@ -470,35 +494,22 @@ func getIsuList(c echo.Context) error {
 
 	responseList := []GetIsuListResponse{}
 	for _, isu := range isuList {
-		var lastCondition IsuCondition
-		foundLastCondition := true
-		err = tx.Get(&lastCondition, "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY `timestamp` DESC LIMIT 1",
-			isu.JIAIsuUUID)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				foundLastCondition = false
-			} else {
-				c.Logger().Errorf("db error: %v", err)
-				return c.NoContent(http.StatusInternalServerError)
-			}
-		}
-
 		var formattedCondition *GetIsuConditionResponse
-		if foundLastCondition {
-			conditionLevel, err := calculateConditionLevel(lastCondition.Condition)
+		if isu.LatestCondition.ID.Valid {
+			conditionLevel, err := calculateConditionLevel(isu.LatestCondition.Condition.String)
 			if err != nil {
 				c.Logger().Error(err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
 
 			formattedCondition = &GetIsuConditionResponse{
-				JIAIsuUUID:     lastCondition.JIAIsuUUID,
+				JIAIsuUUID:     isu.JIAIsuUUID,
 				IsuName:        isu.Name,
-				Timestamp:      lastCondition.Timestamp.Unix(),
-				IsSitting:      lastCondition.IsSitting,
-				Condition:      lastCondition.Condition,
+				Timestamp:      isu.LatestCondition.Timestamp.Time.Unix(),
+				IsSitting:      isu.LatestCondition.IsSitting.Bool,
+				Condition:      isu.LatestCondition.Condition.String,
 				ConditionLevel: conditionLevel,
-				Message:        lastCondition.Message,
+				Message:        isu.LatestCondition.Message.String,
 			}
 		}
 
