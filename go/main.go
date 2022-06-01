@@ -719,8 +719,15 @@ func getIsuIcon(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		c.Logger().Errorf("file error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
 
-	return c.Stream(http.StatusOK, "text/plain", f)
+	c.Response().Header().Set(echo.HeaderContentType, "text/plain")
+	http.ServeContent(c.Response(), c.Request(), jiaIsuUUID, fi.ModTime(), f)
+	return nil
 }
 
 // GET /api/isu/:jia_isu_uuid/graph
