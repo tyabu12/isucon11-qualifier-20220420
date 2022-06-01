@@ -485,13 +485,15 @@ func getIsuList(c echo.Context) error {
 			" LEFT JOIN `isu_condition` AS `latest_condition`"+
 			" ON `latest_condition`.`jia_isu_uuid` = `isu`.`jia_isu_uuid`"+
 			" AND `latest_condition`.`timestamp` = (SELECT MAX(`timestamp`) FROM `isu_condition` WHERE `jia_isu_uuid` = `isu`.`jia_isu_uuid`)"+
-			" WHERE `isu`.`jia_user_id` = ?"+
-			" ORDER BY `isu`.`id` DESC",
+			" WHERE `isu`.`jia_user_id` = ?",
 		jiaUserID)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	sort.Slice(isuList, func(i, j int) bool {
+		return isuList[i].ID > isuList[j].ID
+	})
 
 	responseList := []GetIsuListResponse{}
 	for _, isu := range isuList {
