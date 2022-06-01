@@ -57,3 +57,7 @@ alp-log:
 recreate-sql-init-data:
 	./sql/init.sh
 	mysqldump -uisucon -pisucon -t isucondition > ./sql/1_InitData.sql
+
+extract-icon:
+	./sql/init.sh
+	(cd cmd/extracticon; go build; ./extracticon)
