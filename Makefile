@@ -48,6 +48,9 @@ install-alp:
 	sudo mv ./alp /usr/local/bin
 	rm alp_linux_amd64.zip
 
+install-percona-toolkit:
+	sudo apt install percona-toolkit
+
 publish-mysql-host:
 	mysql -uisucon -pisucon mysql -e"RENAME USER 'isucon'@'localhost' to 'isucon'@'%';"
 
