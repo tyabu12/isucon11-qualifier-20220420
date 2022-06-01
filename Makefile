@@ -55,7 +55,6 @@ alp-log:
 	sudo cat /var/log/nginx/access.log | alp ltsv -m '/api/condition/[0-9a-z\-]+,/isu/[0-9a-z\-]+/icon,/isu/[0-9a-z\-]+/graph,/isu/[0-9a-z\-]+/condition,/api/isu/[0-9a-z\-]+,/isu/[0-9a-z\-]+' -r
 
 recreate-sql-init-data:
-	./sql/init.sh
 	mysqldump -uisucon -pisucon -t isucondition > ./sql/1_InitData.sql
 
 extract-icon:
