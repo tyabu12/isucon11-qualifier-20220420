@@ -1096,14 +1096,28 @@ func calculateConditionLevel(condition string) (string, error) {
 // ISUの性格毎の最新のコンディション情報
 func getTrend(c echo.Context) error {
 	allIsuList := []Isu{}
-	err := db.Select(&allIsuList, "SELECT * FROM `isu`")
+	err := db.Select(&allIsuList,
+		"SELECT `isu`.*"+
+			" ,`latest_condition`.`id` \"latest_condition.id\""+
+			" ,`latest_condition`.`jia_isu_uuid` \"latest_condition.jia_isu_uuid\""+
+			" ,`latest_condition`.`timestamp` \"latest_condition.timestamp\""+
+			" ,`latest_condition`.`is_sitting` \"latest_condition.is_sitting\""+
+			" ,`latest_condition`.`condition` \"latest_condition.condition\""+
+			" ,`latest_condition`.`message` \"latest_condition.message\""+
+			" ,`latest_condition`.`created_at` \"latest_condition.created_at\""+
+			" FROM `isu`"+
+			" LEFT JOIN `isu_condition` AS `latest_condition`"+
+			" ON `latest_condition`.`jia_isu_uuid` = `isu`.`jia_isu_uuid`"+
+			" AND `latest_condition`.`timestamp` = (SELECT MAX(`timestamp`) FROM `isu_condition` WHERE `jia_isu_uuid` = `isu`.`jia_isu_uuid`)")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	isuListByCharacter := map[string][]Isu{}
 	for _, isu := range allIsuList {
-		isuListByCharacter[isu.Character] = append(isuListByCharacter[isu.Character], isu)
+		if isu.LatestCondition.ID.Valid {
+			isuListByCharacter[isu.Character] = append(isuListByCharacter[isu.Character], isu)
+		}
 	}
 
 	res := []TrendResponse{}
@@ -1113,37 +1127,23 @@ func getTrend(c echo.Context) error {
 		characterWarningIsuConditions := []*TrendCondition{}
 		characterCriticalIsuConditions := []*TrendCondition{}
 		for _, isu := range isuList {
-			conditions := []IsuCondition{}
-			err = db.Select(&conditions,
-				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1",
-				isu.JIAIsuUUID,
-			)
+			conditionLevel, err := calculateConditionLevel(isu.LatestCondition.Condition.String)
 			if err != nil {
-				c.Logger().Errorf("db error: %v", err)
+				c.Logger().Error(err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
-
-			if len(conditions) > 0 {
-				isuLastCondition := conditions[0]
-				conditionLevel, err := calculateConditionLevel(isuLastCondition.Condition)
-				if err != nil {
-					c.Logger().Error(err)
-					return c.NoContent(http.StatusInternalServerError)
-				}
-				trendCondition := TrendCondition{
-					ID:        isu.ID,
-					Timestamp: isuLastCondition.Timestamp.Unix(),
-				}
-				switch conditionLevel {
-				case "info":
-					characterInfoIsuConditions = append(characterInfoIsuConditions, &trendCondition)
-				case "warning":
-					characterWarningIsuConditions = append(characterWarningIsuConditions, &trendCondition)
-				case "critical":
-					characterCriticalIsuConditions = append(characterCriticalIsuConditions, &trendCondition)
-				}
+			trendCondition := TrendCondition{
+				ID:        isu.ID,
+				Timestamp: isu.LatestCondition.Timestamp.Time.Unix(),
 			}
-
+			switch conditionLevel {
+			case "info":
+				characterInfoIsuConditions = append(characterInfoIsuConditions, &trendCondition)
+			case "warning":
+				characterWarningIsuConditions = append(characterWarningIsuConditions, &trendCondition)
+			case "critical":
+				characterCriticalIsuConditions = append(characterCriticalIsuConditions, &trendCondition)
+			}
 		}
 
 		sort.Slice(characterInfoIsuConditions, func(i, j int) bool {
