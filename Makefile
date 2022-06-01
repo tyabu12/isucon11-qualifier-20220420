@@ -5,9 +5,9 @@ fetch:
 	cp conf/.gitconfig ~
 
 deploy-app1:
-	sudo cp conf/mariadb.conf.d/* /etc/mysql/mariadb.conf.d/
 	sudo cp conf/nginx/nginx.conf /etc/nginx/nginx.conf
 	sudo cp conf/nginx/sites-enabled/* /etc/nginx/sites-enabled
+	sudo systemctl stop mariadb
 	$(MAKE) build
 	$(MAKE) restart-nginx restart-app restart-db
 	$(MAKE) clean-log
@@ -19,9 +19,9 @@ deploy-app2:
 	$(MAKE) clean-log
 
 deploy-app3:
-	sudo systemctl stop nginx mariadb
-	$(MAKE) build
-	$(MAKE) restart-app
+	sudo cp conf/mariadb.conf.d/* /etc/mysql/mariadb.conf.d/
+	sudo systemctl stop nginx isucondition.go
+	$(MAKE) restart-db
 	$(MAKE) clean-log
 
 build:
