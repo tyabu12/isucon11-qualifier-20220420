@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -60,7 +61,6 @@ type Isu struct {
 	ID              int              `db:"id" json:"id"`
 	JIAIsuUUID      string           `db:"jia_isu_uuid" json:"jia_isu_uuid"`
 	Name            string           `db:"name" json:"name"`
-	Image           []byte           `db:"image" json:"-"`
 	Character       string           `db:"character" json:"character"`
 	JIAUserID       string           `db:"jia_user_id" json:"-"`
 	CreatedAt       time.Time        `db:"created_at" json:"-"`
@@ -313,6 +313,14 @@ func getJIAServiceURL() string {
 	return config.URL
 }
 
+func generateIsuImageDir(jiaUserID string) string {
+	return fmt.Sprintf("../icon/%s", jiaUserID)
+}
+
+func generateIsuImagePath(jiaUserID string, jiaIsuUUID string) string {
+	return fmt.Sprintf("../icon/%s/%s", jiaUserID, jiaIsuUUID)
+}
+
 // POST /initialize
 // サービスを初期化
 func postInitialize(c echo.Context) error {
@@ -560,27 +568,6 @@ func postIsu(c echo.Context) error {
 		useDefaultImage = true
 	}
 
-	if useDefaultImage {
-		isu.Image, err = ioutil.ReadFile(defaultIconFilePath)
-		if err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-	} else {
-		file, err := fh.Open()
-		if err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-		defer file.Close()
-
-		isu.Image, err = ioutil.ReadAll(file)
-		if err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-	}
-
 	targetURL := getJIAServiceURL() + "/api/activate"
 	body := JIAServiceRequest{postIsuConditionTargetBaseURL, isu.JIAIsuUUID}
 	bodyJSON, err := json.Marshal(body)
@@ -623,9 +610,9 @@ func postIsu(c echo.Context) error {
 	isu.Character = isuFromJIA.Character
 
 	isuRes, err := db.Exec("INSERT INTO `isu`"+
-		"	(`jia_isu_uuid`, `name`, `image`, `character`, `jia_user_id`)"+
-		" VALUES (?, ?, ?, ?, ?)",
-		isu.JIAIsuUUID, isu.Name, isu.Image, isu.Character, isu.JIAUserID)
+		"	(`jia_isu_uuid`, `name`, `character`, `jia_user_id`)"+
+		" VALUES (?, ?, ?, ?)",
+		isu.JIAIsuUUID, isu.Name, isu.Character, isu.JIAUserID)
 	if err != nil {
 		mysqlErr, ok := err.(*mysql.MySQLError)
 
@@ -636,13 +623,43 @@ func postIsu(c echo.Context) error {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
 	isuID, err := isuRes.LastInsertId()
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	isu.ID = int(isuID)
+
+	os.Mkdir(generateIsuImageDir(isu.JIAUserID), os.ModePerm)
+	dst, err := os.Create(generateIsuImagePath(isu.JIAUserID, isu.JIAIsuUUID))
+	if err != nil {
+		c.Logger().Errorf("file error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	defer dst.Close()
+	if useDefaultImage {
+		src, err := os.Open(defaultIconFilePath)
+		if err != nil {
+			c.Logger().Errorf("file error: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+		defer src.Close()
+		if _, err := io.Copy(dst, src); err != nil {
+			c.Logger().Errorf("file error: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+	} else {
+		src, err := fh.Open()
+		if err != nil {
+			c.Logger().Errorf("file error: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+		defer src.Close()
+		if _, err := io.Copy(dst, src); err != nil {
+			c.Logger().Errorf("file error: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+	}
 
 	return c.JSON(http.StatusCreated, isu)
 }
@@ -692,19 +709,18 @@ func getIsuIcon(c echo.Context) error {
 
 	jiaIsuUUID := c.Param("jia_isu_uuid")
 
-	var image []byte
-	err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?",
-		jiaUserID, jiaIsuUUID)
+	file := generateIsuImagePath(jiaUserID, jiaIsuUUID)
+	f, err := os.Open(file)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, os.ErrNotExist) {
 			return c.String(http.StatusNotFound, "not found: isu")
 		}
-
-		c.Logger().Errorf("db error: %v", err)
+		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	defer f.Close()
 
-	return c.Blob(http.StatusOK, "", image)
+	return c.Stream(http.StatusOK, "text/plain", f)
 }
 
 // GET /api/isu/:jia_isu_uuid/graph
