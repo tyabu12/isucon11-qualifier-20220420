@@ -609,6 +609,7 @@ func postIsu(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer dst.Close()
+
 	if useDefaultImage {
 		src, err := os.Open(defaultIconFilePath)
 		if err != nil {
