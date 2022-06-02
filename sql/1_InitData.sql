@@ -25,15 +25,6 @@ INSERT INTO `isu` VALUES (1,'eb104b95-3532-4828-8550-89da717b9667','リビング
 UNLOCK TABLES;
 
 --
--- Dumping data for table `isu_association_config`
---
-
-LOCK TABLES `isu_association_config` WRITE;
-/*!40000 ALTER TABLE `isu_association_config` DISABLE KEYS */;
-/*!40000 ALTER TABLE `isu_association_config` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Dumping data for table `isu_condition`
 --
 

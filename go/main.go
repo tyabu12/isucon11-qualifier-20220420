@@ -48,14 +48,10 @@ var (
 	mySQLConnectionData *MySQLConnectionEnv
 
 	jiaJWTSigningKey *ecdsa.PublicKey
+	jiaServiceURL    string = ""
 
 	postIsuConditionTargetBaseURL string // JIAへのactivate時に登録する，ISUがconditionを送る先のURL
 )
-
-type Config struct {
-	Name string `db:"name"`
-	URL  string `db:"url"`
-}
 
 type Isu struct {
 	ID              int              `db:"id" json:"id"`
@@ -302,15 +298,10 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 }
 
 func getJIAServiceURL() string {
-	var config Config
-	err := db.Get(&config, "SELECT * FROM `isu_association_config` WHERE `name` = ?", "jia_service_url")
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			log.Print(err)
-		}
-		return defaultJIAServiceURL
+	if jiaServiceURL != "" {
+		return jiaServiceURL
 	}
-	return config.URL
+	return defaultJIAServiceURL
 }
 
 func generateIsuImageDir(jiaUserID string) string {
@@ -339,15 +330,7 @@ func postInitialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	_, err = db.Exec(
-		"INSERT INTO `isu_association_config` (`name`, `url`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `url` = VALUES(`url`)",
-		"jia_service_url",
-		request.JIAServiceURL,
-	)
-	if err != nil {
-		c.Logger().Errorf("db error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
+	jiaServiceURL = request.JIAServiceURL
 
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
