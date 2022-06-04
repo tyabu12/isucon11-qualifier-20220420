@@ -77,17 +77,14 @@ type GetIsuListResponse struct {
 }
 
 type NullIsuCondition struct {
-	ID         sql.NullInt64  `db:"id"`
 	JIAIsuUUID sql.NullString `db:"jia_isu_uuid"`
 	Timestamp  sql.NullTime   `db:"timestamp"`
 	IsSitting  sql.NullBool   `db:"is_sitting"`
 	Condition  sql.NullString `db:"condition"`
 	Message    sql.NullString `db:"message"`
-	CreatedAt  sql.NullTime   `db:"created_at"`
 }
 
 type IsuCondition struct {
-	ID         int       `db:"id"`
 	JIAIsuUUID string    `db:"jia_isu_uuid"`
 	Timestamp  time.Time `db:"timestamp"`
 	IsSitting  bool      `db:"is_sitting"`
@@ -457,13 +454,11 @@ func getIsuList(c echo.Context) error {
 	err = db.Select(
 		&isuList,
 		"SELECT `isu`.*"+
-			" ,`latest_condition`.`id` \"latest_condition.id\""+
 			" ,`latest_condition`.`jia_isu_uuid` \"latest_condition.jia_isu_uuid\""+
 			" ,`latest_condition`.`timestamp` \"latest_condition.timestamp\""+
 			" ,`latest_condition`.`is_sitting` \"latest_condition.is_sitting\""+
 			" ,`latest_condition`.`condition` \"latest_condition.condition\""+
 			" ,`latest_condition`.`message` \"latest_condition.message\""+
-			" ,`latest_condition`.`created_at` \"latest_condition.created_at\""+
 			" FROM `isu`"+
 			" LEFT JOIN `isu_condition` AS `latest_condition`"+
 			" ON `latest_condition`.`jia_isu_uuid` = `isu`.`jia_isu_uuid`"+
@@ -481,7 +476,7 @@ func getIsuList(c echo.Context) error {
 	responseList := []GetIsuListResponse{}
 	for _, isu := range isuList {
 		var formattedCondition *GetIsuConditionResponse
-		if isu.LatestCondition.ID.Valid {
+		if isu.LatestCondition.JIAIsuUUID.Valid {
 			conditionLevel, err := calculateConditionLevel(isu.LatestCondition.Condition.String)
 			if err != nil {
 				c.Logger().Error(err)
@@ -1071,13 +1066,11 @@ func getTrend(c echo.Context) error {
 	allIsuList := []Isu{}
 	err := db.Select(&allIsuList,
 		"SELECT `isu`.*"+
-			" ,`latest_condition`.`id` \"latest_condition.id\""+
 			" ,`latest_condition`.`jia_isu_uuid` \"latest_condition.jia_isu_uuid\""+
 			" ,`latest_condition`.`timestamp` \"latest_condition.timestamp\""+
 			" ,`latest_condition`.`is_sitting` \"latest_condition.is_sitting\""+
 			" ,`latest_condition`.`condition` \"latest_condition.condition\""+
 			" ,`latest_condition`.`message` \"latest_condition.message\""+
-			" ,`latest_condition`.`created_at` \"latest_condition.created_at\""+
 			" FROM `isu`"+
 			" LEFT JOIN `isu_condition` AS `latest_condition`"+
 			" ON `latest_condition`.`jia_isu_uuid` = `isu`.`jia_isu_uuid`"+
@@ -1088,7 +1081,7 @@ func getTrend(c echo.Context) error {
 	}
 	isuListByCharacter := map[string][]Isu{}
 	for _, isu := range allIsuList {
-		if isu.LatestCondition.ID.Valid {
+		if isu.LatestCondition.JIAIsuUUID.Valid {
 			isuListByCharacter[isu.Character] = append(isuListByCharacter[isu.Character], isu)
 		}
 	}
