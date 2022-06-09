@@ -1306,7 +1306,6 @@ func calculateScoreConditionLevel(condition string) (int, error) {
 // GET /api/trend
 // ISUの性格毎の最新のコンディション情報
 func getTrend(c echo.Context) error {
-	isuConditionWorker.GetTrendResponses()
 	return c.JSON(http.StatusOK, isuConditionWorker.GetTrendResponses())
 }
 
